@@ -21,7 +21,7 @@ namespace script_engine_plugins
 		class T, 		// Topic type
 		const char FName[],	// Script function name
 		// Argument conversion function
-		void AFun(const v8::Arguments&, T&)>
+		void AFun(const v8::FunctionCallbackInfo<v8::Value>&, T&)>
 
 	class publisher_topic_arg_base: public engine_module
 	{
@@ -34,12 +34,12 @@ namespace script_engine_plugins
 		virtual void init(v8::Handle<v8::ObjectTemplate>& global)
 		{
 			using namespace v8;
-			global->Set(String::New(FName),
-				FunctionTemplate::New(&this_t::call));
+			global->Set(String::NewFromUtf8(Isolate::GetCurrent(), FName),
+				FunctionTemplate::New(Isolate::GetCurrent(),&this_t::call));
 		}
 
 	private:
-		static v8::Handle<v8::Value> call(const v8::Arguments& args)
+		static void call(const v8::FunctionCallbackInfo<v8::Value>& args)
 		{
 			ros::NodeHandle n;
 			v8::String::Utf8Value v8_topic_name(args[0]);
@@ -61,7 +61,7 @@ namespace script_engine_plugins
 			AFun(args, msg);
 
 			pub->publish(msg);
-			return v8::True();
+			args.GetReturnValue().Set(v8::True(v8::Isolate::GetCurrent()));
 		}
 
 		typedef publisher_topic_arg_base<T, FName, AFun> this_t;

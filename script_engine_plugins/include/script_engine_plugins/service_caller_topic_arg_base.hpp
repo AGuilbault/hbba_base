@@ -19,7 +19,7 @@ namespace script_engine_plugins
 		class T, 		// Service type
 		const char FName[],	// Script function name
 		// Argument conversion function
-		void AFun(const v8::Arguments&, typename T::Request&),
+		void AFun(const v8::FunctionCallbackInfo<v8::Value>&, typename T::Request&),
 		// Result conversion function
 		v8::Handle<v8::Value> RFun(const typename T::Response&)>
 	class service_caller_topic_arg_base: public engine_module
@@ -33,12 +33,12 @@ namespace script_engine_plugins
 		virtual void init(v8::Handle<v8::ObjectTemplate>& global)
 		{
 			using namespace v8;
-			global->Set(String::New(FName),
-				FunctionTemplate::New(&this_t::call));
+			global->Set(String::NewFromUtf8(Isolate::GetCurrent(),FName),
+				FunctionTemplate::New(Isolate::GetCurrent(),&this_t::call));
 		}
 
 	private:
-		static v8::Handle<v8::Value> call(const v8::Arguments& args)
+		static void call(const v8::FunctionCallbackInfo<v8::Value>& args)
 		{
 			ros::NodeHandle n;
 
@@ -61,7 +61,7 @@ namespace script_engine_plugins
 			typename T::Response res;
 			AFun(args, req);
 			service_client->call(req, res);
-			return RFun(res);
+			args.GetReturnValue().Set(RFun(res));
 		}
 
 		typedef service_caller_topic_arg_base<T, FName, AFun, RFun> this_t;
