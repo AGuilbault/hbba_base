@@ -17,7 +17,7 @@ namespace script_engine_plugins
 		///
 		/// In this method, you should register functions and objects in the
 		/// global object. 
-		virtual void init(v8::Handle<v8::ObjectTemplate>& global) = 0;
+		virtual void init(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& global) = 0;
 
 	};
 

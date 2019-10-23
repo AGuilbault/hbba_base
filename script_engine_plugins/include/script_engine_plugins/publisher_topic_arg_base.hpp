@@ -31,11 +31,11 @@ namespace script_engine_plugins
 		{
 		}
 
-		virtual void init(v8::Handle<v8::ObjectTemplate>& global)
+		virtual void init(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& global)
 		{
 			using namespace v8;
-			global->Set(String::NewFromUtf8(Isolate::GetCurrent(), FName),
-				FunctionTemplate::New(Isolate::GetCurrent(),&this_t::call));
+			global->Set(String::NewFromUtf8(isolate, FName),
+				FunctionTemplate::New(isolate,&this_t::call));
 		}
 
 	private:
@@ -61,7 +61,7 @@ namespace script_engine_plugins
 			AFun(args, msg);
 
 			pub->publish(msg);
-			args.GetReturnValue().Set(v8::True(v8::Isolate::GetCurrent()));
+			args.GetReturnValue().Set(v8::True(args.GetIsolate()));
 		}
 
 		typedef publisher_topic_arg_base<T, FName, AFun> this_t;

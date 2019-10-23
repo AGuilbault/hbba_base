@@ -21,7 +21,7 @@ namespace script_engine_plugins
 		// Argument conversion function
 		void AFun(const v8::FunctionCallbackInfo<v8::Value>&, typename T::Request&),
 		// Result conversion function
-		v8::Handle<v8::Value> RFun(const typename T::Response&)>
+		v8::Handle<v8::Value> RFun(const typename T::Response&, v8::Isolate* isolate)>
 	class service_caller_topic_arg_base: public engine_module
 	{
 	public:
@@ -30,11 +30,11 @@ namespace script_engine_plugins
 		{
 		}
 
-		virtual void init(v8::Handle<v8::ObjectTemplate>& global)
+		virtual void init(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& global)
 		{
 			using namespace v8;
-			global->Set(String::NewFromUtf8(Isolate::GetCurrent(),FName),
-				FunctionTemplate::New(Isolate::GetCurrent(),&this_t::call));
+			global->Set(String::NewFromUtf8(isolate,FName),
+				FunctionTemplate::New(isolate,&this_t::call));
 		}
 
 	private:
@@ -61,7 +61,7 @@ namespace script_engine_plugins
 			typename T::Response res;
 			AFun(args, req);
 			service_client->call(req, res);
-			args.GetReturnValue().Set(RFun(res));
+			args.GetReturnValue().Set(RFun(res, args.GetIsolate()));
 		}
 
 		typedef service_caller_topic_arg_base<T, FName, AFun, RFun> this_t;
