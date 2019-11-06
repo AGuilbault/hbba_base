@@ -6,7 +6,8 @@
               pkg="iw_event_generators" 
               type="goto_events_observer">
             <rosparam>
-                goal_eps_d: 0.20
+                robot_frame: "base_footprint"
+                goal_eps_d: 0.35
                 goal_eps_a: 0.10
             </rosparam>
         </node>

@@ -72,11 +72,13 @@ namespace iw_tools
 
             desires_set_.resize(DES_SIZE);
             hbba_msgs::Desire& goto_d = desires_set_[DES_GOTO];
-            goto_d.id        = "goto_gen_goal";
+            np.param<std::string>("id", goto_d.id, "goto_gen_goal");
             goto_d.type      = "GoTo"; 
             goto_d.utility   = 1;
-            goto_d.intensity = 1.0;
-            goto_d.security  = false;
+            int intensity;
+            np.param<int>("intensity", intensity, 1);
+            goto_d.intensity = intensity;
+            goto_d.security  = false;    
             // NOTE: Params will be filled in goal callback.
             
             desires_ids_.resize(DES_SIZE);
