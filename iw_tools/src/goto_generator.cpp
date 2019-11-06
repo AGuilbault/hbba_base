@@ -39,6 +39,7 @@ namespace iw_tools
         boost::scoped_ptr<EventsFilter> filter_;
 
         GoToServer                      goto_server_;
+        bool                            performingGoal_ = false;
 
         hbba_msgs::AddDesires           req_add_desires_;
         std::vector<hbba_msgs::Desire>& desires_set_;
@@ -56,14 +57,11 @@ namespace iw_tools
         /// \param n  Node handle for main topics and services.
         /// \param np Node handle for private topics, parameters.
         GoToGenerator(ros::NodeHandle& n, ros::NodeHandle& np):
-            goto_server_(n,
-                         "goto",
-                         boost::bind(&GoToGenerator::execute, this, _1),
-                         false),
+            goto_server_(n, "goto", NULL, false),
             desires_set_(req_add_desires_.request.desires),
             desires_ids_(req_rem_desires_.request.ids)
         {
-            sub_goal_ = n.subscribe("goto_goal", 1, &GoToGenerator::goalCB, this);
+            sub_goal_ = n.subscribe("goto_goal", 1, &GoToGenerator::simpleGoalCB, this);
 
             scl_add_desires_ = n.serviceClient<hbba_msgs::AddDesires>(
                 "add_desires");
@@ -87,33 +85,61 @@ namespace iw_tools
             filter_.reset(new EventsFilter(n, goto_d.id));
             filter_->allEventsCB(&GoToGenerator::eventsCB, this);
 
+            goto_server_.registerGoalCallback(boost::bind(&GoToGenerator::goalCB, this));
+            goto_server_.registerPreemptCallback(boost::bind(&GoToGenerator::preheemptCB, this));
             goto_server_.start();
-
         }
 
     private:
-        void goalCB(const geometry_msgs::PoseStamped& msg)
-        {
+        void sendPose(const geometry_msgs::PoseStamped& pose) {
+
             // From common.hpp:
-            poseStampedToNavGoal(msg, desires_set_[DES_GOTO].params); 
+            poseStampedToNavGoal(pose, desires_set_[DES_GOTO].params); 
 
             scl_add_desires_.call(req_add_desires_);
+        }
+
+        void simpleGoalCB(const geometry_msgs::PoseStamped& msg)
+        {
+            // Abord goal in server if we receive an unmanaged simple goal
+            if (performingGoal_) {
+                goto_server_.setPreempted();
+                performingGoal_ = false;
+            }
+
+            sendPose(msg);
+        }
+
+        void goalCB()
+        {
+            const move_base_msgs::MoveBaseGoalConstPtr& goal = goto_server_.acceptNewGoal();
+
+            if (!goto_server_.isPreemptRequested()) {
+                performingGoal_ = true;
+                sendPose(goal->target_pose);
+            }
+        }
+
+        void preheemptCB()
+        {
+            if (performingGoal_) {
+                scl_rem_desires_.call(req_rem_desires_);
+            }
+            goto_server_.setPreempted();
         }
 
         void eventsCB(const hbba_msgs::Event& evt)
         {
             if (evt.type == hbba_msgs::Event::ACC_ON) {
+
                 scl_rem_desires_.call(req_rem_desires_);
-                goto_server_.setSucceeded();
+
+                if (performingGoal_) {
+                    goto_server_.setSucceeded();
+                    performingGoal_ = false;
+                }
             }
         }
-
-        void execute(const move_base_msgs::MoveBaseGoalConstPtr& goal)
-        {
-            goalCB(goal->target_pose);
-            
-        }
-
     };
 }
 
